@@ -2,9 +2,6 @@ name: Assign Random Reviewers
 on:
   pull_request:
     types: [opened, ready_for_review]
-  push:
-    branches:
-      - feat/git/action # 감지할 브랜치 지정
 
 jobs:
   assign-reviewer:
