@@ -1,0 +1,106 @@
+name: Assign Random Reviewers
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+
+jobs:
+  assign-reviewer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Select Random Reviewers
+        id: select-reviewers
+        run: |
+          set -e # 오류 발생 시 즉시 종료
+          echo "===== 리뷰어 선택 작업 시작 ====="
+
+          # 그룹별 리뷰어 설정
+          declare -A group_reviewers=(
+              ["teamA"]="kwonboryong sunjoolee yu-ratel ksh200070 5622lsk"
+              ["teamB"]="dhyun2 Kimkyungmin123 hoseokna eunjeong90 jadugamja"
+          )
+
+          # PR 작성자 가져오기
+          author="${{ github.actor }}"
+          echo "PR 작성자: $author"
+
+          # 리뷰어 결과 초기화
+          selected_reviewers=()
+
+          # 각 팀에서 리뷰어 선택
+          for team in "${!group_reviewers[@]}"; do
+              echo "팀 확인 중: $team"
+
+              # 팀별 리뷰어 목록
+              reviewers=(${group_reviewers[$team]})
+              echo "팀 $team의 초기 리뷰어 목록: ${reviewers[*]}"
+
+              # PR 작성자를 제외한 목록 생성
+              reviewers=("${reviewers[@]/$author}")
+              echo "PR 작성자를 제외한 리뷰어 목록: ${reviewers[*]}"
+
+              # 리뷰어 목록이 비어 있는 경우 처리
+              count=${#reviewers[@]}
+              if [ $count -eq 0 ]; then
+                  echo "팀 ${team}에 리뷰 가능한 사용자가 없습니다."
+                  continue
+              fi
+
+              # 무작위로 리뷰어 선택
+              index=$((RANDOM % count))
+              selected_reviewer=${reviewers[$index]}
+              selected_reviewers+=("$selected_reviewer")
+              echo "팀 ${team}에서 선택된 리뷰어: $selected_reviewer"
+          done
+
+          # 비어 있는 값 제거 및 JSON 형식 생성
+          filtered_reviewers=()
+          for reviewer in "${selected_reviewers[@]}"; do
+            if [ -n "$reviewer" ]; then
+              filtered_reviewers+=("$reviewer")
+            fi
+          done
+
+          # JSON 배열로 변환
+          reviewers_json=$(printf '["%s"]' "$(IFS=,; echo "${filtered_reviewers[*]}")")
+          echo "최종 선택된 리뷰어(JSON): $reviewers_json"
+          echo "::set-output name=reviewers::$reviewers_json"
+          echo "===== 리뷰어 선택 작업 종료 ====="
+
+      - name: Assign Reviewers
+        run: |
+          set -e # 오류 발생 시 즉시 종료
+          echo "===== 리뷰어 할당 작업 시작 ====="
+
+          pr_number=${{ github.event.pull_request.number }}
+          reviewers=${{ steps.select-reviewers.outputs.reviewers }}
+
+          echo "PR 번호: $pr_number"
+          echo "리뷰어(JSON): $reviewers"
+
+          # JSON 데이터 검증
+          if [ -z "$pr_number" ]; then
+            echo "PR 번호를 가져올 수 없습니다."
+            exit 1
+          fi
+          if [ -z "$reviewers" ]; then
+            echo "리뷰어 목록이 비어 있습니다."
+            exit 1
+          fi
+
+          # 리뷰어 할당 요청
+          response=$(curl -s -X POST \
+            -H "Authorization: token ${{ secrets.REVIEWER_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -d "{\"reviewers\": $reviewers}" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/$pr_number/requested_reviewers")
+
+          echo "GitHub API 응답: $response"
+
+          if echo "$response" | grep -q '"errors"'; then
+            echo "리뷰어 할당 중 오류 발생."
+            echo "오류 내용: $response"
+            exit 1
+          fi
+
+          echo "리뷰어 할당이 성공적으로 완료되었습니다."
+          echo "===== 리뷰어 할당 작업 종료 ====="
