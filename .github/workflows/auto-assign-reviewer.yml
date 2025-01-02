@@ -2,6 +2,9 @@ name: Assign Random Reviewer
 on:
   pull_request:
     types: [opened, ready_for_review]
+  push:
+    branches:
+      - feat/notice/chore
 
 jobs:
   assign-reviewer:
