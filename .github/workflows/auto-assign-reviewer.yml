@@ -1,10 +1,10 @@
-name: Assign Random Reviewer
+name: Assign Random Reviewers
 on:
   pull_request:
     types: [opened, ready_for_review]
   push:
     branches:
-      - feat/git/action
+      - feat/git/action # 변경을 감지할 브랜치를 명시 (필요에 따라 수정 가능)
 
 jobs:
   assign-reviewer:
@@ -49,17 +49,18 @@ jobs:
           done
 
           # 선택된 리뷰어 출력
-          echo "최종 선택된 리뷰어: ${selected_reviewers[@]}"
-          echo "reviewers=${selected_reviewers[*]}" >> $GITHUB_OUTPUT
+          reviewers_json=$(printf '["%s"]' "$(IFS=,; echo "${selected_reviewers[*]}")")
+          echo "최종 선택된 리뷰어: $reviewers_json"
+          echo "reviewers=$reviewers_json" >> $GITHUB_OUTPUT
 
       - name: Assign Reviewers
         run: |
           pr_number=${{ github.event.pull_request.number }}
           reviewers=${{ steps.select-reviewers.outputs.reviewers }}
-          reviewers_json=$(printf '["%s"]' "$(echo "$reviewers" | sed 's/ /","/g')")
 
+          # 리뷰어 할당 요청
           curl -s -X POST \
             -H "Authorization: token ${{ secrets.REVIEWER_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            -d "{\"reviewers\": $reviewers_json}" \
+            -d "{\"reviewers\": $reviewers}" \
             "https://api.github.com/repos/${{ github.repository }}/pulls/$pr_number/requested_reviewers"
