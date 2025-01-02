@@ -7,38 +7,56 @@ jobs:
   assign-reviewer:
     runs-on: ubuntu-latest
     steps:
-      - name: Select Random Reviewer
-        id: select-reviewer
+      - name: Select Random Reviewers
+        id: select-reviewers
         run: |
           # 그룹별 리뷰어 설정
           declare -A group_reviewers=(
               ["teamA"]="kwonboryong sunjoolee yu-ratel ksh200070 5622lsk"
-              ["teamB"]="hyun2 Kimkyungmin123 hoseokna eunjeong90 jadugamja"
+              ["teamB"]="dhyun2 Kimkyungmin123 hoseokna eunjeong90 jadugamja"
           )
 
-          # PR 작성자의 그룹 설정
-          declare -A user_to_group=(
-              ["author1"]="teamA"
-              ["author2"]="teamB"
-          )
-
+          # PR 작성자 가져오기
           author="${{ github.actor }}"
-          group=${user_to_group[$author]}
-          if [ -z "$group" ]; then
-              echo "PR 작성자의 그룹을 찾을 수 없습니다: $author"
-              exit 1
-          fi
 
-          # 그룹의 리뷰어 목록에서 무작위로 선택
-          reviewers=(${group_reviewers[$group]})
-          reviewers=("${reviewers[@]/$author}")
+          # 리뷰어 결과 초기화
+          selected_reviewers=()
 
-          count=${#reviewers[@]}
-          if [ $count -eq 0 ]; then
-              echo "No reviewers available."
-              exit 1
-          fi
-          index=$((RANDOM % count))
-          selected_reviewer=${reviewers[$index]}
-          echo "Selected reviewer: $selected_reviewer"
-          echo "reviewer=$selected_reviewer" >> $GITHUB_OUTPUT
+          # 각 팀에서 리뷰어 선택
+          for team in "${!group_reviewers[@]}"; do
+              # 팀별 리뷰어 목록
+              reviewers=(${group_reviewers[$team]})
+
+              # PR 작성자를 제외한 목록 생성
+              reviewers=("${reviewers[@]/$author}")
+
+              # 리뷰어 목록이 비어 있는 경우 처리
+              count=${#reviewers[@]}
+              if [ $count -eq 0 ]; then
+                  echo "팀 ${team}에 리뷰 가능한 사용자가 없습니다."
+                  continue
+              fi
+
+              # 무작위로 리뷰어 선택
+              index=$((RANDOM % count))
+              selected_reviewer=${reviewers[$index]}
+              selected_reviewers+=("$selected_reviewer")
+
+              echo "팀 ${team}에서 선택된 리뷰어: $selected_reviewer"
+          done
+
+          # 선택된 리뷰어 출력
+          echo "최종 선택된 리뷰어: ${selected_reviewers[@]}"
+          echo "reviewers=${selected_reviewers[*]}" >> $GITHUB_OUTPUT
+
+      - name: Assign Reviewers
+        run: |
+          pr_number=${{ github.event.pull_request.number }}
+          reviewers=${{ steps.select-reviewers.outputs.reviewers }}
+          reviewers_json=$(printf '["%s"]' "$(echo $reviewers | sed 's/ /","/g')")
+
+          curl -s -X POST \
+            -H "Authorization: token ${{ secrets.REVIEWER_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -d "{\"reviewers\": $reviewers_json}" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/$pr_number/requested_reviewers"
