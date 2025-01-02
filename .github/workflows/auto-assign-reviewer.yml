@@ -1,0 +1,63 @@
+name: Assign Random Reviewers
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+
+jobs:
+  assign-reviewer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Select Random Reviewers
+        id: select-reviewers
+        run: |
+          # 그룹별 리뷰어 설정
+          declare -A group_reviewers=(
+              ["teamA"]="kwonboryong sunjoolee yu-ratel ksh200070 5622lsk"
+              ["teamB"]="dhyun2 Kimkyungmin123 hoseokna eunjeong90 jadugamja"
+          )
+
+          # PR 작성자 가져오기
+          author="${{ github.actor }}"
+
+          # 리뷰어 결과 초기화
+          selected_reviewers=()
+
+          # 각 팀에서 리뷰어 선택
+          for team in "${!group_reviewers[@]}"; do
+              # 팀별 리뷰어 목록
+              reviewers=(${group_reviewers[$team]})
+
+              # PR 작성자를 제외한 목록 생성
+              reviewers=("${reviewers[@]/$author}")
+
+              # 리뷰어 목록이 비어 있는 경우 처리
+              count=${#reviewers[@]}
+              if [ $count -eq 0 ]; then
+                  echo "팀 ${team}에 리뷰 가능한 사용자가 없습니다."
+                  continue
+              fi
+
+              # 무작위로 리뷰어 선택
+              index=$((RANDOM % count))
+              selected_reviewer=${reviewers[$index]}
+              selected_reviewers+=("$selected_reviewer")
+
+              echo "팀 ${team}에서 선택된 리뷰어: $selected_reviewer"
+          done
+
+          # 선택된 리뷰어 출력
+          reviewers_json=$(printf '["%s"]' "$(IFS=,; echo "${selected_reviewers[*]}")")
+          echo "최종 선택된 리뷰어: $reviewers_json"
+          echo "reviewers=$reviewers_json" >> $GITHUB_OUTPUT
+
+      - name: Assign Reviewers
+        run: |
+          pr_number=${{ github.event.pull_request.number }}
+          reviewers=${{ steps.select-reviewers.outputs.reviewers }}
+
+          # 리뷰어 할당 요청
+          curl -s -X POST \
+            -H "Authorization: token ${{ secrets.REVIEWER_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -d "{\"reviewers\": $reviewers}" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/$pr_number/requested_reviewers"
