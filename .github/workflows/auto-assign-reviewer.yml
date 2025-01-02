@@ -13,6 +13,9 @@ jobs:
       - name: Select Random Reviewers
         id: select-reviewers
         run: |
+          set -e # 오류 발생 시 즉시 종료
+          echo "===== 리뷰어 선택 작업 시작 ====="
+
           # 그룹별 리뷰어 설정
           declare -A group_reviewers=(
               ["teamA"]="kwonboryong sunjoolee yu-ratel ksh200070 5622lsk"
@@ -21,17 +24,22 @@ jobs:
 
           # PR 작성자 가져오기
           author="${{ github.actor }}"
+          echo "PR 작성자: $author"
 
           # 리뷰어 결과 초기화
           selected_reviewers=()
 
           # 각 팀에서 리뷰어 선택
           for team in "${!group_reviewers[@]}"; do
+              echo "팀 확인 중: $team"
+
               # 팀별 리뷰어 목록
               reviewers=(${group_reviewers[$team]})
+              echo "팀 $team의 초기 리뷰어 목록: ${reviewers[*]}"
 
               # PR 작성자를 제외한 목록 생성
               reviewers=("${reviewers[@]/$author}")
+              echo "PR 작성자를 제외한 리뷰어 목록: ${reviewers[*]}"
 
               # 리뷰어 목록이 비어 있는 경우 처리
               count=${#reviewers[@]}
@@ -44,19 +52,25 @@ jobs:
               index=$((RANDOM % count))
               selected_reviewer=${reviewers[$index]}
               selected_reviewers+=("$selected_reviewer")
-
               echo "팀 ${team}에서 선택된 리뷰어: $selected_reviewer"
           done
 
           # 선택된 리뷰어 출력
           reviewers_json=$(printf '["%s"]' "$(IFS=,; echo "${selected_reviewers[*]}")")
-          echo "최종 선택된 리뷰어: $reviewers_json"
+          echo "최종 선택된 리뷰어(JSON): $reviewers_json"
           echo "reviewers=$reviewers_json" >> $GITHUB_ENV
+          echo "===== 리뷰어 선택 작업 종료 ====="
 
       - name: Assign Reviewers
         run: |
+          set -e # 오류 발생 시 즉시 종료
+          echo "===== 리뷰어 할당 작업 시작 ====="
+
           pr_number=${{ github.event.pull_request.number }}
           reviewers=$(echo ${{ env.reviewers }})
+
+          echo "PR 번호: $pr_number"
+          echo "리뷰어(JSON): $reviewers"
 
           # JSON 데이터 검증
           if [ -z "$pr_number" ]; then
@@ -69,8 +83,18 @@ jobs:
           fi
 
           # 리뷰어 할당 요청
-          curl -s -X POST \
+          response=$(curl -s -X POST \
             -H "Authorization: token ${{ secrets.REVIEWER_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
             -d "{\"reviewers\": $reviewers}" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls/$pr_number/requested_reviewers"
+            "https://api.github.com/repos/${{ github.repository }}/pulls/$pr_number/requested_reviewers")
+
+          echo "GitHub API 응답: $response"
+
+          if echo "$response" | grep -q '"errors"'; then
+            echo "리뷰어 할당 중 오류 발생."
+            exit 1
+          fi
+
+          echo "리뷰어 할당이 성공적으로 완료되었습니다."
+          echo "===== 리뷰어 할당 작업 종료 ====="
