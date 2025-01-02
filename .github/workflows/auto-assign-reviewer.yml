@@ -4,7 +4,7 @@ on:
     types: [opened, ready_for_review]
   push:
     branches:
-      - feat/git/action # 변경을 감지할 브랜치를 명시 (필요에 따라 수정 가능)
+      - feat/git/action # 감지할 브랜치 지정
 
 jobs:
   assign-reviewer:
@@ -51,12 +51,22 @@ jobs:
           # 선택된 리뷰어 출력
           reviewers_json=$(printf '["%s"]' "$(IFS=,; echo "${selected_reviewers[*]}")")
           echo "최종 선택된 리뷰어: $reviewers_json"
-          echo "reviewers=$reviewers_json" >> $GITHUB_OUTPUT
+          echo "reviewers=$reviewers_json" >> $GITHUB_ENV
 
       - name: Assign Reviewers
         run: |
           pr_number=${{ github.event.pull_request.number }}
-          reviewers=${{ steps.select-reviewers.outputs.reviewers }}
+          reviewers=$(echo ${{ env.reviewers }})
+
+          # JSON 데이터 검증
+          if [ -z "$pr_number" ]; then
+            echo "PR 번호를 가져올 수 없습니다."
+            exit 1
+          fi
+          if [ -z "$reviewers" ]; then
+            echo "리뷰어 목록이 비어 있습니다."
+            exit 1
+          fi
 
           # 리뷰어 할당 요청
           curl -s -X POST \
