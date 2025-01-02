@@ -8,13 +8,12 @@ export default {
         'header-match-team-pattern': ({ header }) => {
           // 허용된 GitHub 아이디 목록
           const allowedIds = [
-            'dhp94d',
+            'dhyun2',
             'kwonboryong',
             'sunjoolee',
             'yu-ratel',
             'ksh200070',
             '5622lsk',
-            'hyun2',
             'Kimkyungmin123',
             'hoseokna',
             'eunjeong90',
