@@ -1,0 +1,44 @@
+name: Assign Random Reviewer
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+
+jobs:
+  assign-reviewer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Select Random Reviewer
+        id: select-reviewer
+        run: |
+          # 그룹별 리뷰어 설정
+          declare -A group_reviewers=(
+              ["teamA"]="kwonboryong sunjoolee yu-ratel ksh200070 5622lsk"
+              ["teamB"]="hyun2 Kimkyungmin123 hoseokna eunjeong90 jadugamja"
+          )
+
+          # PR 작성자의 그룹 설정
+          declare -A user_to_group=(
+              ["author1"]="teamA"
+              ["author2"]="teamB"
+          )
+
+          author="${{ github.actor }}"
+          group=${user_to_group[$author]}
+          if [ -z "$group" ]; then
+              echo "PR 작성자의 그룹을 찾을 수 없습니다: $author"
+              exit 1
+          fi
+
+          # 그룹의 리뷰어 목록에서 무작위로 선택
+          reviewers=(${group_reviewers[$group]})
+          reviewers=("${reviewers[@]/$author}")
+
+          count=${#reviewers[@]}
+          if [ $count -eq 0 ]; then
+              echo "No reviewers available."
+              exit 1
+          fi
+          index=$((RANDOM % count))
+          selected_reviewer=${reviewers[$index]}
+          echo "Selected reviewer: $selected_reviewer"
+          echo "reviewer=$selected_reviewer" >> $GITHUB_OUTPUT
