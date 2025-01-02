@@ -13,7 +13,7 @@ jobs:
           # 그룹별 리뷰어 설정
           declare -A group_reviewers=(
               ["teamA"]="kwonboryong sunjoolee yu-ratel ksh200070 5622lsk"
-              ["teamB"]="hyun2 Kimkyungmin123 hoseokna eunjeong90 jadugamja"
+              ["teamB"]="dhyun2 Kimkyungmin123 hoseokna eunjeong90 jadugamja"
           )
 
           # PR 작성자의 그룹 설정
