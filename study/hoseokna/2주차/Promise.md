@@ -46,21 +46,34 @@ promise.then((result) => console.log('결과:', result)); // Fulfilled 후 결�
 
 ### Possibly Asynchronous (비동기적일 가능성)
 
-- Promise는 항상 비동기 작업에만 사용되는 것은 아니지만, `동기적 작업`과 `비동기적 작업` 모두에서 사용할 수 있음.
-  - 동기 작업: 이미 결과가 있는 경우 즉시 Fulfilled 상태로 전환.
-  - 비동기 작업: 결과가 없는 경우 Pending 상태로 유지하다가 나중에 전환.
+- Promise는 동기적으로 생성되더라도, 후속 작업(`then`, `catch`, `finally`)은 항상 **비동기적으로 처리**
+  - Promise가 Fulfilled 또는 Rejected 상태라면, `then`, `catch`에서 등록된 콜백은 **즉시 마이크로태스크 큐에 추가**
+  - 마이크로태스크 큐는 이벤트 루프가 콜 스택을 비운 후 처리되므로, 후속 작업은 항상 비동기적으로 실행.
+- Promise는 두 가지 방식으로 상태가 전환될 수 있음.
+  1. 즉시 Fulfilled 상태로 변환: 결과가 이미 준비된 경우, `Promise.resolve`를 사용.
+  2. Pending 상태 유지: 비동기 작업(`setTimeout`, `fetch` 등)이 완료될 때까지 상태가 Pending으로 유지.
 
 ```js
-// 동기 Promise
+// 즉시 Fulfilled Promise
 const syncPromise = Promise.resolve('동기 완료');
-console.log(syncPromise); // Fulfilled 상태
+console.log(syncPromise); // Fulfilled 상태 (즉시 상태와 결과 설정)
+
+// 후속 작업 등록 (마이크로태스크 큐에 추가)
+syncPromise.then((value) => {
+  console.log('마이크로태스크 실행:', value);
+});
 
 // 비동기 Promise
 const asyncPromise = new Promise((resolve) => {
   setTimeout(() => resolve('비동기 완료'), 1000);
 });
 console.log(asyncPromise); // Pending 상태
-```
+
+// 후속 작업 등록
+asyncPromise.then((value) => {
+  console.log('마이크로태스크 실행 (비동기 완료):', value);
+});
+
 
 ## 인터페이스
 
@@ -88,3 +101,4 @@ console.log(asyncPromise); // Pending 상태
 | **Promise.race**       | 가장 먼저 완료된 Promise의 결과 반환         | 첫 번째 Fulfilled 또는 Rejected | 첫 번째 Rejected                    |
 | **Promise.any**        | 첫 번째 Fulfilled된 결과 반환                | 하나라도 Fulfilled              | 모두 Rejected (AggregateError 반환) |
 | **Promise.allSettled** | 모든 Promise가 완료된 후 각 상태와 결과 반환 | 항상 성공 (모든 상태 반환)      | 실패 없음                           |
+```
