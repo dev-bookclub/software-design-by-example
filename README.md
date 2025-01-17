@@ -28,7 +28,7 @@
 
 - [1주차 가이드](https://github.com/dev-bookclub/software-design-by-example/wiki/%F0%9F%93%81-1%EC%A3%BC%EC%B0%A8-%E2%80%90-%EC%8B%9C%EC%8A%A4%ED%85%9C-%ED%94%84%EB%A1%9C%EA%B7%B8%EB%9E%98%EB%B0%8D)
 - [2주차 가이드](https://github.com/dev-bookclub/software-design-by-example/wiki/%F0%9F%93%81-2%EC%A3%BC%EC%B0%A8-%E2%80%90-%EB%B9%84%EB%8F%99%EA%B8%B0-%ED%94%84%EB%A1%9C%EA%B7%B8%EB%9E%98%EB%B0%8D-&-%EC%9C%A0%EB%8B%9B-%ED%85%8C%EC%8A%A4%ED%8A%B8)
-
+- [3주차 가이드](https://github.com/dev-bookclub/software-design-by-example/wiki/%F0%9F%93%81-3%EC%A3%BC%EC%B0%A8-%E2%80%90-%ED%8C%8C%EC%9D%BC-%EB%B0%B1%EC%97%85-&-%EB%8D%B0%EC%9D%B4%ED%84%B0-%ED%85%8C%EC%9D%B4%EB%B8%94)
 ---
 
 ## 📌 팀원소개
